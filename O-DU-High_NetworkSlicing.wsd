@@ -1,0 +1,67 @@
+@startuml "O-DU High Network Slicing"
+
+title
+    O-DU High Network Slicing
+end title
+
+participant SMO
+'participant "O-CU"
+box "O-DU High" #LightBlue
+    participant "DU APP"
+    participant RLC
+    participant SCH
+    participant MAC
+endbox
+
+note over "DU APP", MAC
+    Cell Configuration [with Supported Slices info] and Activation
+endnote
+
+SMO->"DU APP": edit-config
+"DU APP"->MAC: Slice Configuration Req.
+MAC->SCH: Slice Configuration Req.
+
+note over SCH
+    Store detected slice configuration
+endnote
+
+SCH->MAC: Slice Configuraiton Res.
+MAC->"DU APP": Slice Configuraiton Res.
+"DU APP"->SMO: edit-config complete
+
+note over MAC, "DU APP"
+    Slice Configuration completed.
+endnote
+
+note over SMO, MAC
+    UE Attach and PDU session Established.
+endnote
+
+loop Slice Performance Metrics [every 60 sec]
+    RLC->"DU APP": Slice PM Info
+    "DU APP"->SMO: Slice PM Info
+end
+
+OPT Slice Configuration optimization
+    SMO->"DU APP": edit-config
+    "DU APP"->MAC: Slice Reconfiguration Req.
+    MAC->SCH: Slice Reconfiguration Req.
+
+    note over SCH
+        Modify detected slice configuration
+    endnote
+
+    SCH->MAC: Slice Reconfiguraiton Res.
+    MAC->"DU APP": Slice Reconfiguraiton Res.
+    "DU APP"->SMO: edit-config complete
+
+    note over SMO, MAC
+        Slice Reconfiguration complete
+    endnote
+
+end
+
+
+
+
+@enduml
