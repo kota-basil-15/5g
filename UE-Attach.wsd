@@ -1,0 +1,74 @@
+@startuml "UE Attach"
+skinparam RoundCorner 10
+
+title
+    UE Attach
+end title
+
+'=============================
+'===== Network Functions =====
+'=============================
+database UDR
+actor UE
+
+box gNB-DU High
+    participant MAC
+    participant SCH
+    participant RLC
+    participant "DU APP"
+endbox
+
+box gNB-DU
+    participant PHY
+    participant MAC
+    participant SCH
+    participant RLC
+    participant "DU APP"
+endbox
+
+box gNB-CU
+    participant "CU-CP"
+    participant "CU-UP"
+endbox
+
+box 5GC #lightblue
+    participant "New AMF"
+    participant "Old AMF"
+    participant UPF
+    participant SMF
+    participant PCF
+    participant AUSF
+    participant UDM
+    participant UDR
+    participant EIR
+endbox
+
+'=====================
+'===== Reference =====
+'=====================
+ref over UE, "CU-CP": https://wiki.o-ran-sc.org/display/ORANDU/O-DU+High+Overview
+ref over "DU APP", "New AMF": 3GPP TS38.401, "Procedure for the 5G System"
+ref over "CU-CP", EIR: 3GPP TS23.502, "NG RAN Architecture description"
+
+'=========================
+'===== Preconditions =====
+'=========================
+group Precondisions over UE, "Old AMF"
+    note over UE
+        RRC_IDLE
+    endnote
+
+    rnote over "Old AMF"
+        UE_CONTEXT
+    endrnote
+end
+
+'=====================
+'===== UE Attach =====
+'=====================
+
+
+
+
+
+@enduml
