@@ -54,9 +54,9 @@ ref over "CU-CP", EIR: 3GPP TS23.502, "NG RAN Architecture description"
 '===== Preconditions =====
 '=========================
 group Precondisions over UE, "Old AMF"
-    note over UE
+    rnote over UE #LightBlue
         RRC_IDLE
-    endnote
+    endrnote
 
     rnote over "Old AMF"
         UE_CONTEXT
@@ -67,7 +67,94 @@ end
 '===== UE Attach =====
 '=====================
 
+group 5G NR Connection Setup
+    UE->PHY: RACH indication(Msg-1)
+    UE->UE++: Start T300
+    rnote over UE
+        Start decording the 
+        PDCCH for the RA-RNTI
+    endrnote
+    PHY->MAC: RACH.indication
+    MAC->SCH: RACH indicaiton
+    rnote over SCH
+        Allocate Temporary C-RNTI
+    endrnote
+    SCH->MAC: RAR\n(PDCCH DCI format 1_0, PDSCH)\n(Msg-2)
+    SCH->MAC: UL Grant for Msg-3(PUSCH)
+    MAC->PHY: DL TTI Req.\nTx Data Req.
+    PHY->UE: RAR, UL grant
 
+    rnote over UE
+        ue-identity=
+        Random number
+        between 0 & 2^39-1
+    endrnote
+    rnote over UE
+        Extract UL Grant
+        from the RAR
+    endrnote
+
+    SCH->MAC: UL Sched Info(PUSCH)
+    MAC->PHY: UL TTI Req.
+
+    UE->PHY: RRC: RRCSetupReq.(Msg-3)
+    PHY->MAC: Rx Data Ind
+    PHY->MAC: CRC Ind
+    MAC->"DU APP": UL CCCH IND
+    "DU APP"->"CU-CP": F1AP: INITIAL UL RRC MESSAGE TRANSFER\n(RRC: RRCSetupReq.)
+    rnote over "CU-CP"
+        Setup SRB1
+    endrnote
+    "CU-CP"->"DU APP": F1AP: DL RRC MESSAGE TRANSFER\n(RRC: RRCSetupRes.)
+    "DU APP"->MAC: DL CCCH IND
+    "DU APP"->MAC: UE Config Req.
+    "DU APP"->RLC: UE Config Req.
+    RLC->"DU APP": UE Config Res.
+    MAC->SCH: Add UE Config Req.
+    SCH->MAC: UE Config Res.
+    MAC->"DU APP": UE Config Res.
+    MAC->SCH: BO Info
+    SCH->MAC: DL Sched Info(PDCCH, PDSCH)
+    MAC->PHY: DL TTI Req.\nTx Data Req.
+    SCH->MAC: UL Sched Info(PUCCH)
+    MAC->PHY: UL TTI Req.
+    PHY->UE: RRC: RRCSetup(Msg-4)
+    UE->UE--: Stop T300 as it has received the RRCSetup
+    rnote over UE #LightBlue
+        RRC_CONNECTED
+    endrnote
+
+    UE->PHY: SR
+    PHY->MAC: UCI.ind
+    MAC->SCH: UCI indication
+    SCH->MAC: DL Sched Info\n(PDCCH, DCI format 0_0)
+    MAC->PHY: UL DCI.req.
+    PHY->UE: UL grant
+    SCH->MAC: UL Sched Info\n(PUSCH)
+    MAC->PHY: UL TTI.req.
+
+    opt BSR, in case UL grant is Insufficient
+        UE->PHY: Short BSR
+        PHY->MAC: Rx Data.ind
+        PHY->MAC: CRC.ind
+        MAC->SCH: Short BSR(after demuxing)
+        SCH->MAC: DL Sched Info\n(PDCCH, DCI format 0_0)
+        MAC->PHY: UL DCI.req.
+        PHY->UE: UL grant
+        SCH->MAC: UL Sched Info\n(PUSCH)
+        MAC->PHY: UL TTI.req.
+    end
+end
+
+    'RRCSetupComplete
+    UE->PHY: RRC: RRCSetupComplete\n(dedicatedNAS-Msg: RegistrationReq.)
+    PHY->MAC: Rx Data.ind
+    PHY->MAC: CRC.ind
+    MAC->RLC: UL Data ind
+    RLC->"DU APP": UL RRC msg transfer
+    "DU APP"->"CU-CP": F1AP: RRCSetupComplete\n(dedicatedNAS-Msg: RegistrationReq.)
+
+    'AMF selection
 
 
 
