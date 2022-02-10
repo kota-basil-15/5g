@@ -1,0 +1,89 @@
+@startuml "O-DU High Cell Up and Broadcast Procedure"
+
+title
+    O-DU High Cell Up and Broadcast procedure
+end title
+
+participant SMO
+actor UE
+participant "O-DU Low"
+box "O-DU High" #LightBlue
+'    participant "O-DU Low"
+    participant "5G NR MAC"
+    participant "5G NR SCH"
+    participant "5G NR RLC"
+    participant "O-DU APP"
+endbox
+participant "O-CU"
+participant "AMF"
+
+note over "O-DU Low", "O-DU APP"
+    Platform and layer Initialization
+endnote
+
+alt O1_ENABLE
+    SMO->"O-DU APP": edit-config [Cell Configuration]
+end
+
+note over "O-DU APP"
+    Store Cell Configuration in local DB
+endnote
+
+"O-DU APP"->"O-CU": F1AP: F1 SETUP REQ.
+"O-CU"->AMF: NGAP: NG SETUP REQ.
+AMF->"O-CU": NGAP: NG SETUP RES.
+"O-CU"->"O-DU APP": F1AP: F1 SETUP RES.
+
+"O-DU APP"->"5G NR MAC": Cell Configuration Req.
+"5G NR MAC"->"5G NR SCH": Cell Configuration Req.
+"5G NR SCH"->"5G NR MAC": Cell Configuration Res.
+"5G NR MAC"->"O-DU Low": CONFIG.Request
+"O-DU Low"->"5G NR MAC": CONFIG.Response
+"5G NR MAC"->"O-DU APP": Cell Configuration Res.
+
+"O-DU APP"->"O-CU": GNB-DU CONFIGURATION UPDATE
+"O-CU"->"O-DU APP": GNB-DU CONFIGURATION UPDATE ACKNOWLEDGE
+"O-CU"->"O-DU APP": Reset
+"O-DU APP"->"O-CU": Reset Acknowledge
+
+
+"O-DU APP"->"5G NR MAC": Cell Start Req.
+"5G NR MAC"->"O-DU Low": START.Request
+"O-DU Low"->"5G NR MAC": SLOT.Indication
+"5G NR MAC"->"5G NR SCH": Slot Indication #1
+"5G NR MAC"->"O-DU APP": Slot Indication #1
+
+note over "O-DU APP", "5G NR MAC"
+    CELL UP
+endnote
+
+alt O1_ENABLE
+    "O-DU APP"->SMO: CELL UP Alarm Notification
+end
+
+"O-DU Low"->"5G NR MAC": SLOT.Indication
+"5G NR MAC"->"5G NR SCH": Slot Indication #2
+"5G NR MAC"->"O-DU APP": Slot Indication #2
+
+"O-DU Low"->"5G NR MAC": SLOT.Indication
+"5G NR MAC"->"5G NR SCH": Slot Indication #n
+"5G NR MAC"->"O-DU APP": Slot Indication #n
+
+note left "5G NR SCH"
+    ssb ocassion detected
+endnote
+
+"5G NR SCH"->"5G NR MAC": DL Scheduling Info
+"5G NR MAC"->"O-DU Low": DL TTI Req.[SSB]
+"O-DU Low"->UE: SSB(MIB)
+
+note left "5G NR SCH"
+    ssb ocassion detected
+endnote
+
+"5G NR SCH"->"5G NR MAC": DL Scheduling Info
+"5G NR MAC"->"O-DU Low": DL TTI Req.[PDCCH]
+"5G NR MAC"->"O-DU Low": Tx Data Req.[PDSCH]
+"O-DU Low"->UE: SIB1
+
+@enduml
