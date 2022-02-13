@@ -1,8 +1,8 @@
 # 5g
 
 1. Add browser extension
-  Firefox: "PlantUML Visualizer"
-  Chrome: "PlantUML Viewer"
+Firefox: "PlantUML Visualizer"
+Chrome: "PlantUML Viewer"
 
 2. Open this page via raw data
 
