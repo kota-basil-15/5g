@@ -1,6 +1,7 @@
 @startuml "UE Attach"
 skinparam RoundCorner 10
 
+!pragma teoz true
 title
     UE Attach
 end title
@@ -11,29 +12,24 @@ end title
 database UDR
 actor UE
 
-box gNB-DU High
-    participant MAC
-    participant SCH
-    participant RLC
-    participant "DU APP"
-endbox
-
 box gNB-DU
     participant PHY
-    participant MAC
-    participant SCH
-    participant RLC
-    participant "DU APP"
+    box gNB-DU High
+        participant MAC
+        participant SCH
+        participant RLC
+        participant "DU APP" as DUAPP 
+    endbox
 endbox
 
 box gNB-CU
-    participant "CU-CP"
-    participant "CU-UP"
+    participant "CU-CP" as CUCP
+    participant "CU-UP" as CUUP
 endbox
 
 box 5GC #lightblue
-    participant "New AMF"
-    participant "Old AMF"
+    participant "New AMF" as NewAMF
+    participant "Old AMF" as OldAMF
     participant UPF
     participant SMF
     participant PCF
@@ -47,19 +43,19 @@ autonumber
 '=====================
 '===== Reference =====
 '=====================
-ref over UE, "CU-CP": https://wiki.o-ran-sc.org/display/ORANDU/O-DU+High+Overview
-ref over "DU APP", "New AMF": 3GPP TS38.401, "Procedure for the 5G System"
-ref over "CU-CP", EIR: 3GPP TS23.502, "NG RAN Architecture description"
+ref over UE, CUCP: https://wiki.o-ran-sc.org/display/ORANDU/O-DU+High+Overview
+ref over DUAPP, NewAMF: 3GPP TS38.401, "Procedure for the 5G System"
+ref over CUCP, EIR: 3GPP TS23.502, "NG RAN Architecture description"
 
 '=========================
 '===== Preconditions =====
 '=========================
-group Precondisions over UE, "Old AMF"
+group Precondisions over UE, OldAMF
     rnote over UE #LightBlue
         RRC_IDLE
     endrnote
 
-    rnote over "Old AMF"
+    rnote over OldAMF
         UE_CONTEXT
     endrnote
 end
@@ -101,19 +97,19 @@ group 5G NR RRC Connection Setup
     UE->PHY: RRC: RRCSetupReq.(Msg-3)
     PHY->MAC: Rx Data Ind
     PHY->MAC: CRC Ind
-    MAC->"DU APP": UL CCCH IND
-    "DU APP"->"CU-CP": F1AP: INITIAL UL RRC MESSAGE TRANSFER\n(RRC: RRCSetupReq.)
-    rnote over "CU-CP"
+    MAC->DUAPP: UL CCCH IND
+    DUAPP->CUCP: F1AP: INITIAL UL RRC MESSAGE TRANSFER\n(RRC: RRCSetupReq.)
+    rnote over CUCP
         Setup SRB1
     endrnote
-    "CU-CP"->"DU APP": F1AP: DL RRC MESSAGE TRANSFER\n(RRC: RRCSetupRes.)
-    "DU APP"->MAC: DL CCCH IND
-    "DU APP"->MAC: UE Config Req.
-    "DU APP"->RLC: UE Config Req.
-    RLC->"DU APP": UE Config Res.
+    CUCP->DUAPP: F1AP: DL RRC MESSAGE TRANSFER\n(RRC: RRCSetupRes.)
+    DUAPP->MAC: DL CCCH IND
+    DUAPP->MAC: UE Config Req.
+    DUAPP->RLC: UE Config Req.
+    RLC->DUAPP: UE Config Res.
     MAC->SCH: Add UE Config Req.
     SCH->MAC: UE Config Res.
-    MAC->"DU APP": UE Config Res.
+    MAC->DUAPP: UE Config Res.
     MAC->SCH: BO Info
     SCH->MAC: DL Sched Info(PDCCH, PDSCH)
     MAC->PHY: DL TTI Req.\nTx Data Req.
@@ -156,117 +152,182 @@ UE->PHY: RRC: RRCSetupComplete\n(dedicatedNAS-Msg: RegistrationReq.)
 PHY->MAC: Rx Data.ind
 PHY->MAC: CRC.ind
 MAC->RLC: UL Data ind
-RLC->"DU APP": UL RRC msg transfer
-"DU APP"->"CU-CP": F1AP: RRCSetupComplete\n(dedicatedNAS-Msg: RegistrationReq.)
+RLC->DUAPP: UL RRC msg transfer
+DUAPP->CUCP: F1AP: RRCSetupComplete\n(dedicatedNAS-Msg: RegistrationReq.)
 
 'AMF selection
-rnote over "CU-CP" #Lime
-AMF selection(TS23.501,6.3.5)
+rnote over CUCP #Lime
+    AMF selection(TS23.501,6.3.5)
 endrnote
 
-"CU-CP"->"New AMF": NG-AP:INITIAL UE MESSAGE\n(NAS-PDU: Registration Req.)
+CUCP->NewAMF: NG-AP:INITIAL UE MESSAGE\n(NAS-PDU: Registration Req.)
 
 group Obtain the UE Context from the Old AMF
-"New AMF"->"Old AMF": N14: Namf_Communication_UEContextTransfer Req.
-rnote over "Old AMF"
-Integrity check the "NAS
-Registration Req." contained
-in the UE context transfer
-Req.
-endrnote
-"Old AMF"->"New AMF": N14: Namf_Communication_UEContextTransfer Res.
-rnote over "New AMF"
-Save the UE Context
-endrnote
+    NewAMF->OldAMF: N14: Namf_Communication_UEContextTransfer Req.
+    rnote over OldAMF
+        Integrity check the "NAS
+        Registration Req." contained
+        in the UE context transfer
+        Req.
+    endrnote
+    OldAMF->NewAMF: N14: Namf_Communication_UEContextTransfer Res.
+    rnote over NewAMF
+        Save the UE Context
+    endrnote
 end
 'end group(Obtain the UE Context from the Old AMF)
 
-"New AMF"->"CU-CP": NG-AP: DL NAS TRANSPORT\n(NAS Identity Req.)
-"CU-CP"->"DU APP": F1-AP: DL RRC MESSAGE TRANSFER
-PHY->UE: RRC: DLInformationTransfer
+NewAMF->CUCP: NG-AP: DL NAS TRANSPORT\n(NAS Identity Req.)
+CUCP->DUAPP: F1-AP: DL RRC MESSAGE TRANSFER
+
+DUAPP->RLC: DL RRC Msg Transfer
+RLC->MAC: BO Status
+MAC->SCH: BO Info
+SCH->MAC: DL Alloc
+MAC->RLC: BO Res.
+RLC->MAC: Send DL Data to MAC
+MAC->PHY: DL TTI Req., Tx Data Req.
+SCH->MAC: UL Sched info(PUCCH)
+MAC->PHY: UL TTI Req.
+PHY->UE: RRC: DLInformationTransfer\n(NAS Identity Req.)
+UE->PHY: SR
+PHY->MAC: UCI.ind
+MAC->SCH: UCI Indication
+SCH->MAC: DL Sched Info(PDCCH, DCI format 0_0)
+MAC->PHY: UL DCI.Req.
+PHY->UE: UL grant
+SCH->MAC: UL Sched Info(PUSCH)
+MAC->PHY: UL TTI Req.
+
 rnote over "UE"
-Derive SUCI from the Home
-PLMN public key
+    Derive SUCI from the Home
+    PLMN public key
 endrnote
 UE->PHY: RRC: ULInformationTransfer
-"DU APP"->"CU-CP": F1-AP: UL RRC MESSAGE TRANSFER
-"CU-CP"->"New AMF": NG-AP: UL NAS TRANSPORT\n(NAS Identity Res.)
+PHY->MAC: Rx Data.ind
+PHY->MAC: CRC Ind
+MAC->RLC: UL Data ind
+RLC->DUAPP: UL RRC msg transfer    
+DUAPP->CUCP: F1-AP: UL RRC MESSAGE TRANSFER
+CUCP->NewAMF: NG-AP: UL NAS TRANSPORT\n(NAS Identity Res.)
 
-rnote over "New AMF" #Lime
-AUSF selection(TS23.501,6.3.4)
+rnote over NewAMF #Lime
+    AUSF selection(TS23.501,6.3.4)
 endrnote
 
 group NAS Authentication and Security
 
-group 5G AKA Authentication(TS29.509,5.2.2.2.2)
-"New AMF"->AUSF: N12: Nausf_UEAuthenticate_authenticate Req.
-group Authentication Information Retreival(TS29.503,5.4.2.2)
-AUSF->UDM: N13: Nudm_UEAuthenticate_Get Req.
-UDM->UDR: retrieve authentication data
-UDR->UDM: retrieve authentication data
-rnote over "UDM"
-Authentication
-Vector Generation
-endrnote
-rnote over "UDM"
-suci->supi
-endrnote
-UDM->AUSF: N13: Nudm_UEAuthenticate_Get Res.
-end
-AUSF->"New AMF": N12: Nausf_UEAuthenticate_authenticate Res.
-end
+    group 5G AKA Authentication(TS29.509,5.2.2.2.2)
+        NewAMF->AUSF: N12: Nausf_UEAuthenticate_authenticate Req.
+        group Authentication Information Retreival(TS29.503,5.4.2.2)
+            AUSF->UDM: N13: Nudm_UEAuthenticate_Get Req.
+            UDM->UDR: retrieve authentication data
+            UDR->UDM: retrieve authentication data
+            rnote over "UDM"
+                Authentication
+                Vector Generation
+            endrnote
+            rnote over "UDM"
+                suci->supi
+            endrnote
+            UDM->AUSF: N13: Nudm_UEAuthenticate_Get Res.
+        end
+        AUSF->NewAMF: N12: Nausf_UEAuthenticate_authenticate Res.
+    end
 
-"New AMF"->"CU-CP": NG-AP: DL NAS TRANSPORT\n(NAS Authentication Req.)
-"CU-CP"->"DU APP": F1-AP: DL RRC MESSAGE TRANSFER
-PHY->UE: RRC: DLInformationTransfer
+    NewAMF->CUCP: NG-AP: DL NAS TRANSPORT\n(NAS Authentication Req.)
+    CUCP->DUAPP: F1-AP: DL RRC MESSAGE TRANSFER
+    DUAPP->RLC: DL RRC Msg Transfer
+    RLC->MAC: BO Status
+    MAC->SCH: BO Info
+    SCH->MAC: DL Alloc
+    MAC->RLC: BO Res.
+    RLC->MAC: Send DL Data to MAC
+    MAC->PHY: DL TTI Req., Tx Data Req.
+    SCH->MAC: UL Sched info(PUCCH)
+    MAC->PHY: UL TTI Req.
+    PHY->UE: RRC: DLInformationTransfer\n(NAS Authentication Req.)
+    UE->PHY: SR
+    PHY->MAC: UCI.ind
+    MAC->SCH: UCI Indication
+    SCH->MAC: DL Sched Info(PDCCH, DCI format 0_0)
+    MAC->PHY: UL DCI.Req.
+    PHY->UE: UL grant
+    SCH->MAC: UL Sched Info(PUSCH)
+    MAC->PHY: UL TTI Req.
 
-UE->PHY: RRC: ULInformationTransfer
-"DU APP"->"CU-CP": F1-AP: UL RRC MESSAGE TRANSFER
-"CU-CP"->"New AMF": NG-AP: UL NAS TRANSPORT\n(NAS Authentication Res.)
-note right
-Authentication challenge
-end note
+    UE->PHY: RRC: ULInformationTransfer
+    PHY->MAC: Rx Data.ind
+    PHY->MAC: CRC Ind
+    MAC->RLC: UL Data ind
+    RLC->DUAPP: UL RRC msg transfer    
+    DUAPP->CUCP: F1-AP: UL RRC MESSAGE TRANSFER
+    CUCP->NewAMF: NG-AP: UL NAS TRANSPORT\n(NAS Authentication Res.)
+    note right
+        Authentication challenge
+    end note
 
-group 5G AKA Confirmation(TS29.509,5.2.2.2.2)
-"New AMF"->AUSF: N12: AKA Confirmation Req.
-group Authentication Confirmation(TS29.503,5.4.2.3.2)
-AUSF->UDM: N13: Authentication Confirmation Req.
-UDM->UDR: retrieve authentication data
-UDR->UDM: retrieve authentication data
-UDM->AUSF: N13: Authentication Confirmation Res.
-end
-AUSF->"New AMF": N12: AKA Confirmation Res.
-note right "New AMF"
-authResult(SUCCESS),supi
-end note
-rnote over "New AMF"
-Store the supi
-endrnote
-end
+    group 5G AKA Confirmation(TS29.509,5.2.2.2.2)
+        NewAMF->AUSF: N12: AKA Confirmation Req.
+        group Authentication Confirmation(TS29.503,5.4.2.3.2)
+            AUSF->UDM: N13: Authentication Confirmation Req.
+            UDM->UDR: retrieve authentication data
+            UDR->UDM: retrieve authentication data
+            UDM->AUSF: N13: Authentication Confirmation Res.
+        end
+        AUSF->NewAMF: N12: AKA Confirmation Res.
+        note right NewAMF
+        authResult(SUCCESS),supi
+        end note
+        rnote over NewAMF
+            Store the supi
+        endrnote
+    end
 
-"New AMF"->"CU-CP": NG-AP: DL NAS TRANSPORT\n(NAS Security Mode Command)
-note right
-Req. the IMEISV
-end note
-"CU-CP"->"DU APP": F1-AP: DL RRC MESSAGE TRANSFER
-PHY->UE: RRC: DLInformationTransfer
+    NewAMF->CUCP: NG-AP: DL NAS TRANSPORT\n(NAS Security Mode Command)
+    note right
+        Req. the IMEISV
+    end note
+    CUCP->DUAPP: F1-AP: DL RRC MESSAGE TRANSFER
+    DUAPP->RLC: DL RRC Msg Transfer
+    RLC->MAC: BO Status
+    MAC->SCH: BO Info
+    SCH->MAC: DL Alloc
+    MAC->RLC: BO Res.
+    RLC->MAC: Send DL Data to MAC
+    MAC->PHY: DL TTI Req., Tx Data Req.
+    SCH->MAC: UL Sched info(PUCCH)
+    MAC->PHY: UL TTI Req.
+    PHY->UE: RRC: DLInformationTransfer\n(NAS Security Mode Command)
+    UE->PHY: SR
+    PHY->MAC: UCI.ind
+    MAC->SCH: UCI Indication
+    SCH->MAC: DL Sched Info(PDCCH, DCI format 0_0)
+    MAC->PHY: UL DCI.Req.
+    PHY->UE: UL grant
+    SCH->MAC: UL Sched Info(PUSCH)
+    MAC->PHY: UL TTI Req.
 
-UE->PHY: RRC: ULInformationTransfer
-"DU APP"->"CU-CP": F1-AP: UL RRC MESSAGE TRANSFER
-"CU-CP"->"New AMF": NG-AP: UL NAS TRANSPORT\n(NAS Security Mode Complete)\n(NAS Registration Req.)
+    UE->PHY: RRC: ULInformationTransfer
+    PHY->MAC: Rx Data.ind
+    PHY->MAC: CRC Ind
+    MAC->RLC: UL Data ind
+    RLC->DUAPP: UL RRC msg transfer    
+    DUAPP->CUCP: F1-AP: UL RRC MESSAGE TRANSFER
+    CUCP->NewAMF: NG-AP: UL NAS TRANSPORT\n(NAS Security Mode Complete)\n(NAS Registration Req.)
 
 end
 'end group(NAS Authentication and Security)
 
-"New AMF"->"Old AMF": N14: Namf_Communication_RegistrationCompleteNotify
+NewAMF->OldAMF: N14: Namf_Communication_RegistrationCompleteNotify
 
 group Confirm that the UE is not blocklisted(TS29.511,)
-rnote over "New AMF"
-Obtain the PEI from
-the UE Context
-endrnote
-"New AMF"->EIR : N17: N5g-eir_EquipmentIdentityCheck Req.
-EIR->"New AMF": N17: N5g-eir_EquipmentIdentityCheck Res.
+    rnote over NewAMF
+        Obtain the PEI from
+        the UE Context
+    endrnote
+    NewAMF->EIR : N17: N5g-eir_EquipmentIdentityCheck Req.
+    EIR->NewAMF: N17: N5g-eir_EquipmentIdentityCheck Res.
 end
 'end group(Confirm that the UE is not blocklisted)
 
@@ -274,237 +335,302 @@ end
 
 
 group Register with the UDM and obtain the subscription data
-rnote over "New AMF" #Lime 
-UDM Selection(TS23.501,6.3.8)
-endrnote
+    rnote over NewAMF #Lime 
+        UDM Selection(TS23.501,6.3.8)
+    endrnote
 
-group Slice Selection Subscription Data Retrieval(TS29.503,5.2.2.2.2)
-"New AMF"->UDM: N8: Data Retrieval Req.(supi)
-UDM->UDR: retrieve authentication data Req.
-UDR->UDM: Res.
-UDM->"New AMF": N8: Data Retrieval Res.(NSSAI(,and supported-features,plmn-id))
-end
+    group Slice Selection Subscription Data Retrieval(TS29.503,5.2.2.2.2)
+        NewAMF->UDM: N8: Data Retrieval Req.(supi)
+        UDM->UDR: retrieve authentication data Req.
+        UDR->UDM: Res.
+        UDM->NewAMF: N8: Data Retrieval Res.(NSSAI(,and supported-features,plmn-id))
+    end
 
-group AMF Registration for 3GPP access(TS29.503,5.3.2.2)
-"New AMF"->UDM: N8: Nudm_UEContextManagement_Registration Req.
-UDM->UDR: registration Req.
-UDR->UDM: Res.
-UDM->"New AMF": N8: Nudm_UEContextManagement_Registration Res.
-end
-group Access and Mobility Subscription Data Retrieval(TS29.503,5.2.2.2.3)
-"New AMF"->UDM: N8: Nudm_SubscriberDataManagement_Get Req.
-UDM->UDR: get Req.
-UDR->UDM: Res.
-UDM->"New AMF": N8: Nudm_SubscriberDataManagement_Get Res.
-rnote right "New AMF"
-nssai
-endrnote
-end
+    group AMF Registration for 3GPP access(TS29.503,5.3.2.2)
+        NewAMF->UDM: N8: Nudm_UEContextManagement_Registration Req.
+        UDM->UDR: registration Req.
+        UDR->UDM: Res.
+        UDM->NewAMF: N8: Nudm_UEContextManagement_Registration Res.
+    end
+    group Access and Mobility Subscription Data Retrieval(TS29.503,5.2.2.2.3)
+        NewAMF->UDM: N8: Nudm_SubscriberDataManagement_Get Req.
+        UDM->UDR: get Req.
+        UDR->UDM: Res.
+        UDM->NewAMF: N8: Nudm_SubscriberDataManagement_Get Res.
+        rnote right NewAMF
+            nssai
+        endrnote
+    end
 
-group SMF Selection Subscription Data Retrieval(TS29.503,5.2.2.2.4)
-"New AMF"->UDM: N8: Nudm_SubscriberDataManagement_Get Req.
-UDM->UDR: SMF Selection Subscription Data Req.
-UDR->UDM: Res.
-UDM->UDR: SMF Registration Req.
-UDR->UDM: Res.
-UDM->"New AMF": N8: Nudm_SubscriberDataManagement_Get Res.
-rnote right "New AMF"
-(empty)
-endrnote
-end
+    group SMF Selection Subscription Data Retrieval(TS29.503,5.2.2.2.4)
+        NewAMF->UDM: N8: Nudm_SubscriberDataManagement_Get Req.
+        UDM->UDR: SMF Selection Subscription Data Req.
+        UDR->UDM: Res.
+        UDM->UDR: SMF Registration Req.
+        UDR->UDM: Res.
+        UDM->NewAMF: N8: Nudm_SubscriberDataManagement_Get Res.
+        rnote right NewAMF
+            (empty)
+        endrnote
+    end
 
-group UE context in SMF Data Retrieval(TS29.503,5.2.2.2.8)
-"New AMF"->UDM: N8: Nudm_SubscriberDataManagement_Get Req.
-UDM->UDR: get Req.
-UDR->UDM: Res.
-UDM->"New AMF": N8: Nudm_SubscriberDataManagement_Get Res.
-rnote right "New AMF"
-(empty)
-endrnote
-end
+    group UE context in SMF Data Retrieval(TS29.503,5.2.2.2.8)
+        NewAMF->UDM: N8: Nudm_SubscriberDataManagement_Get Req.
+        UDM->UDR: get Req.
+        UDR->UDM: Res.
+        UDM->NewAMF: N8: Nudm_SubscriberDataManagement_Get Res.
+        rnote right NewAMF
+            (empty)
+        endrnote
+    end
 
-rnote over "New AMF"
-Create UE Context
-endrnote
-UDM->"Old AMF": N8: Nudm_UEContextManagement_Deregistration_Notify
-"Old AMF"->SMF: N11: Nsmf_PDUSession_ReleaseSMContext
-rnote over "Old AMF"
-Delete UE Context
-endrnote
+    rnote over NewAMF
+        Create UE Context
+    endrnote
+    UDM->OldAMF: N8: Nudm_UEContextManagement_Deregistration_Notify
+    OldAMF->SMF: N11: Nsmf_PDUSession_ReleaseSMContext
+    rnote over OldAMF
+        Delete UE Context
+    endrnote
 end
 'end group(Register with the UDM and obtain the subscription data)
 
 group Update policy association with the PCF. The PCF registers for AMF events.
-rnote over "New AMF" #Lime
-PCF Selection(TS23.501,6.3.7)
-endrnote
-"New AMF"->PCF: N15: Npcf_AMPolicyControl_Create Req.
-PCF->"New AMF": N15: Npcf_AMPolicyControl_Create Res.
-PCF->"New AMF": N15: Namf_EventExpose_Subscribe Req.
-"New AMF"->PCF: N15: Namf_EventExpose_Subscribe Res.
-"Old AMF"->PCF: N15: Npcf_AMPolicyControl_Delete Req.
-PCF->"Old AMF": N15: Npcf_AMPolicyControl_Delete Res.
+    rnote over NewAMF #Lime
+        PCF Selection(TS23.501,6.3.7)
+    endrnote
+    NewAMF->PCF: N15: Npcf_AMPolicyControl_Create Req.
+    PCF->NewAMF: N15: Npcf_AMPolicyControl_Create Res.
+    PCF->NewAMF: N15: Namf_EventExpose_Subscribe Req.
+    NewAMF->PCF: N15: Namf_EventExpose_Subscribe Res.
+    OldAMF->PCF: N15: Npcf_AMPolicyControl_Delete Req.
+    PCF->OldAMF: N15: Npcf_AMPolicyControl_Delete Res.
 end
 'end group(Update policy association with the PCF. The PCF registers for AMF events.)
 
 group Setup the User Plane Function(UPF)
-"New AMF"->SMF: N11: Nsmf_PDUSession_UpdateSMContext Req.
-rnote over "SMF"
-allocate
-UE IP Address
-endrnote
-rnote over "SMF"
-allocate
-PDU Session Uplink TEID
-endrnote
-rnote over "SMF" #Lime
-UPF Selection(TS23.501,6.3.3)
-endrnote
-SMF->UPF: N4: PFCP Session Modification Req.
-UPF<-]: Downlink Data
-rnote over "UPF"
-begin
-Buffer Downlink Data
-endrnote
-UPF->SMF: N4: PFCP Session Modification Res.
-SMF->"New AMF": N11: Nsmf_PDUSession_UpdateSMContext Res.
+    NewAMF->SMF: N11: Nsmf_PDUSession_UpdateSMContext Req.
+    rnote over "SMF"
+        allocate
+        UE IP Address
+    endrnote
+    rnote over "SMF"
+        allocate
+        PDU Session Uplink TEID
+    endrnote
+    rnote over "SMF" #Lime
+        UPF Selection(TS23.501,6.3.3)
+    endrnote
+    SMF->UPF: N4: PFCP Session Modification Req.
+    UPF<-]: Downlink Data
+    rnote over "UPF"
+        begin
+        Buffer Downlink Data
+    endrnote
+    UPF->SMF: N4: PFCP Session Modification Res.
+    SMF->NewAMF: N11: Nsmf_PDUSession_UpdateSMContext Res.
 end
 'end group(Setup the User Plane Function(UPF))
 
-rnote over "New AMF"
-allocate
-AMF UE NGAP ID
+rnote over NewAMF
+    allocate
+    AMF UE NGAP ID
 endrnote
-"New AMF"->"CU-CP": Initial Context Setup Req.\n(NAS-PDU: Registration Accept)
-"CU-CP"->"CU-UP": BEARER CONTEXT SETUP REQ.
-"CU-UP"->"CU-CP": BEARER CONTEXT SETUP RES.
+NewAMF->CUCP: Initial Context Setup Req.\n(NAS-PDU: Registration Accept)
+CUCP->CUUP: BEARER CONTEXT SETUP REQ.
+CUUP->CUCP: BEARER CONTEXT SETUP RES.
 
 group 5G-NR AS Security Procedure
-"CU-CP"->"DU APP": F1-AP: DL RRC MESSAGE TRANSFER\n(Security Mode Command)\n(UE CONTEXT SETUP REQ.)
-PHY->UE: RRC: DLInformationTransfer
-"DU APP"->"CU-CP": F1-AP: UL RRC MESSAGE TRANSFER\n(UE CONTEXT SETUP RES.)
-"CU-CP"->"CU-UP": BEARER CONTEXT MODIFICATION REQ.
-"CU-UP"->"CU-CP": BEARER CONTEXT MODIFICATION RES.
-rnote over "UE"
-Derive the K-gNB key
-endrnote
-rnote over "UE"
-Derive K-RRC-int key
-associated with the Integrity
-Procedure Algorithm
-endrnote
-rnote over "UE"
-Verify the integrity protection
-of the Security Mode Command
-message
-endrnote
-rnote over "UE"
-Derive K-UP-int key
-associated with the Integrity
-Procedure Algorithm
-endrnote
-rnote over "UE"
-Start SRB Integrity Protect
-endrnote
-UE->PHY: RRC: ULInformationTransfer
-"DU APP"->"CU-CP": F1-AP: UL RRC MESSAGE TRANSFER\n(Security Mode Complete)
-rnote over "UE"
-Start SRB Ciphering
-endrnote
+    CUCP->DUAPP: F1-AP: DL RRC MESSAGE TRANSFER\n(Security Mode Command)\n(UE CONTEXT SETUP REQ.)
+    DUAPP->RLC: DL RRC Msg Transfer
+    RLC->MAC: BO Status
+    MAC->SCH: BO Info
+    SCH->MAC: DL Alloc
+    MAC->RLC: BO Res.
+    RLC->MAC: Send DL Data to MAC
+    MAC->PHY: DL TTI Req., Tx Data Req.
+    SCH->MAC: UL Sched info(PUCCH)
+    MAC->PHY: UL TTI Req.
+    PHY->UE: RRC: DLInformationTransfer\n(Security Mode Command)
+    UE->PHY: SR
+    PHY->MAC: UCI.ind
+    MAC->SCH: UCI Indication
+    SCH->MAC: DL Sched Info(PDCCH, DCI format 0_0)
+    MAC->PHY: UL DCI.Req.
+    PHY->UE: UL grant
+    SCH->MAC: UL Sched Info(PUSCH)
+    MAC->PHY: UL TTI Req.
+
+    DUAPP->CUCP: F1-AP: UL RRC MESSAGE TRANSFER\n(UE CONTEXT SETUP RES.)
+    CUCP->CUUP: BEARER CONTEXT MODIFICATION REQ.
+    CUUP->CUCP: BEARER CONTEXT MODIFICATION RES.
+    rnote over "UE"
+        Derive the K-gNB key
+    endrnote
+    rnote over "UE"
+        Derive K-RRC-int key
+        associated with the Integrity
+        Procedure Algorithm
+    endrnote
+    rnote over "UE"
+        Verify the integrity protection
+        of the Security Mode Command
+        message
+    endrnote
+    rnote over "UE"
+        Derive K-UP-int key
+        associated with the Integrity
+        Procedure Algorithm
+    endrnote
+    rnote over "UE"
+        Start SRB Integrity Protect
+    endrnote
+    UE->PHY: RRC: ULInformationTransfer\n(Security Mode Complete)
+    PHY->MAC: Rx Data.ind
+    PHY->MAC: CRC Ind
+    MAC->RLC: UL Data ind
+    RLC->DUAPP: UL RRC msg transfer    
+    DUAPP->CUCP: F1-AP: UL RRC MESSAGE TRANSFER\n(Security Mode Complete)
+    rnote over "UE"
+        Start SRB Ciphering
+    endrnote
 end
 'end group(5G-NR AS Security Procedure)
 
-alt not received "UE Radio Capability" yet
-group UE Capability Match Procedure(TS23.502,4.2.8)
-"New AMF"->"CU-CP": N2: UE Capability Match Req.
-"CU-CP"->"DU APP": F1-AP: DL RRC MESSAGE TRANSFER\n(UE Capability Enquiry)
-PHY->UE: RRC: DLInformationTransfer
-UE->PHY: RRC: ULInformationTransfer
-"DU APP"->"CU-CP": F1-AP: UL RRC MESSAGE TRANSFER\n(UE Capability Information)
-"CU-CP"->"New AMF": N2: UE Capability Match Res.
-end
+opt not received "UE Radio Capability" yet
+    group UE Capability Match Procedure(TS23.502,4.2.8)
+        NewAMF->CUCP: N2: UE Capability Match Req.
+        CUCP->DUAPP: F1-AP: DL RRC MESSAGE TRANSFER\n(UE Capability Enquiry)
+        DUAPP->RLC: DL RRC Msg Transfer
+        RLC->MAC: BO Status
+        MAC->SCH: BO Info
+        SCH->MAC: DL Alloc
+        MAC->RLC: BO Res.
+        RLC->MAC: Send DL Data to MAC
+        MAC->PHY: DL TTI Req., Tx Data Req.
+        SCH->MAC: UL Sched info(PUCCH)
+        MAC->PHY: UL TTI Req.
+        PHY->UE: RRC: DLInformationTransfer\n(UE Capability Enquiry)
+        UE->PHY: SR
+        PHY->MAC: UCI.ind
+        MAC->SCH: UCI Indication
+        SCH->MAC: DL Sched Info(PDCCH, DCI format 0_0)
+        MAC->PHY: UL DCI.Req.
+        PHY->UE: UL grant
+        SCH->MAC: UL Sched Info(PUSCH)
+        MAC->PHY: UL TTI Req.
+
+        UE->PHY: RRC: ULInformationTransfer\n(UE Capability Information)
+        PHY->MAC: Rx Data.ind
+        PHY->MAC: CRC Ind
+        MAC->RLC: UL Data ind
+        RLC->DUAPP: UL RRC msg transfer
+        DUAPP->CUCP: F1-AP: UL RRC MESSAGE TRANSFER\n(UE Capability Information)
+        CUCP->NewAMF: N2: UE Capability Match Res.
+    end
 end
 
 group 5G-NR RRC Reconfiguration
-"CU-CP"->"DU APP": F1-AP: DL RRC MESSAGE TRANSFER\n(RRCReconfiguration\n[Registration Accept\n(5GS registration result,\nPDU session status)])
-PHY->UE: RRC: DLInformationTransfer
-rnote over "UE"
-Perform the primary cell
-group configuration Procedure
-endrnote
-rnote over "UE"
-Perform the secondary cell
-group configuration Procedure
-endrnote
-rnote over "UE"
-Perform the radio bearer
-configuration Procedure
-message
-endrnote
-rnote over "UE"
-Initiate measurements based
-on the received MeasConfig
-endrnote
-rnote over "UE"
-Process the Registration
-Accept NAS message and setup
-PDU sessions
-endrnote
-UE->PHY: RRC: ULInformationTransfer
-"DU APP"->"CU-CP": F1-AP: UL RRC MESSAGE TRANSFER\n(RRCReconfigurationComplete)
+    CUCP->DUAPP: F1-AP: DL RRC MESSAGE TRANSFER\n(RRCReconfiguration\n[Registration Accept\n(5GS registration result,\nPDU session status)])
+    DUAPP->RLC: DL RRC Msg Transfer
+    RLC->MAC: BO Status
+    MAC->SCH: BO Info
+    SCH->MAC: DL Alloc
+    MAC->RLC: BO Res.
+    RLC->MAC: Send DL Data to MAC
+    MAC->PHY: DL TTI Req., Tx Data Req.
+    SCH->MAC: UL Sched info(PUCCH)
+    MAC->PHY: UL TTI Req.
+    PHY->UE: RRC: DLInformationTransfer\n(RRC Reconfiguration\n[Registration Accept])
+    UE->PHY: SR
+    PHY->MAC: UCI.ind
+    MAC->SCH: UCI Indication
+    SCH->MAC: DL Sched Info(PDCCH, DCI format 0_0)
+    MAC->PHY: UL DCI.Req.
+    PHY->UE: UL grant
+    SCH->MAC: UL Sched Info(PUSCH)
+    MAC->PHY: UL TTI Req.
+    rnote over "UE"
+        Perform the primary cell
+        group configuration Procedure
+    endrnote
+    rnote over "UE"
+        Perform the secondary cell
+        group configuration Procedure
+    endrnote
+    rnote over "UE"
+        Perform the radio bearer
+        configuration Procedure
+        message
+    endrnote
+    rnote over "UE"
+        Initiate measurements based
+        on the received MeasConfig
+    endrnote
+    rnote over "UE"
+        Process the Registration
+        Accept NAS message and setup
+        PDU sessions
+    endrnote
+    UE->PHY: RRC: ULInformationTransfer\n(RRC Reconfiguraion Complete\n[Registration Complete])
+    PHY->MAC: Rx Data.ind
+    PHY->MAC: CRC Ind
+    MAC->RLC: UL Data ind
+    RLC->DUAPP: UL RRC msg transfer
+    DUAPP->CUCP: F1-AP: UL RRC MESSAGE TRANSFER\n(RRCReconfigurationComplete\n[Registration Complete])
 end
 'end group(5G-NR RRC Reconfiguration)
 
-rnote over "CU-CP"
-allocate
-PDU Session Downlink TEID
+rnote over CUCP
+    allocate
+    PDU Session Downlink TEID
 endrnote
 
-"CU-CP"->"New AMF": Initial Context Setup Res.\n(PDU Registration Complete)
+CUCP->NewAMF: Initial Context Setup Res.\n(PDU Registration Complete)
 
 group Start Downlink and Uplink Data Transfer
     group 要確認 PDU Session Establishment(TS23.502, 4.3.2.2)
         UE->PHY: RRC: ULInformationTransfer
-        "DU APP"->"CU-CP": F1-AP: UL RRC MESSAGE TRANSFER\n(NAS Registration Complete)\n(N1: PDU Session Esta. Req.)
-        "CU-CP"->"New AMF": NG-AP UL NAS Transport
+        DUAPP->CUCP: F1-AP: UL RRC MESSAGE TRANSFER\n(NAS Registration Complete)\n(N1: PDU Session Esta. Req.)
+        CUCP->NewAMF: NG-AP UL NAS Transport
 
         note over UE, UDM: see PDU Session Esta. Procedure
 
-    '    "New AMF"->"CU-CP": NG-AP DL NAS Transport
-        "New AMF"->"CU-CP": N2 PDU Session Req.
-        "CU-CP"->"DU APP": F1-AP: DL RRC MESSAGE TRANSFER\n(N1: PDU Session Esta. Accept)\n(RRC: RRCReconfiguration)
+    '    NewAMF->CUCP: NG-AP DL NAS Transport
+        NewAMF->CUCP: N2 PDU Session Req.
+        CUCP->DUAPP: F1-AP: DL RRC MESSAGE TRANSFER\n(N1: PDU Session Esta. Accept)\n(RRC: RRCReconfiguration)
         PHY->UE: RRC: DLInformationTransfer\nRRC: RRCReconfiguration
         UE->PHY: RRC: RRCReconfigurationComplete
-        "DU APP"->"CU-CP": F1-AP: UL RRC MESSAGE TRANSFER\n(RRC: RRCReconfigurationComplete)
-    '    "CU-CP"->"DU APP": F1-AP: UE CONTEXT MODIFICATION REQ.\n(RRC: RRC Reconfiguration Complete Identicator)
-    '    note over "DU APP"
+        DUAPP->CUCP: F1-AP: UL RRC MESSAGE TRANSFER\n(RRC: RRCReconfigurationComplete)
+    '    CUCP->DUAPP: F1-AP: UE CONTEXT MODIFICATION REQ.\n(RRC: RRC Reconfiguration Complete Identicator)
+    '    note over DUAPP
     '        スケジューラ開始？？？
     '    endnote
-    '   "DU APP"->"CU-CP": F1-AP: UE CONTEXT MODIFICATION RES.
-        "CU-CP"->"New AMF": N2 PDU Session Req. Ack.
+    '   DUAPP->CUCP: F1-AP: UE CONTEXT MODIFICATION RES.
+        CUCP->NewAMF: N2 PDU Session Req. Ack.
     end
 
-    UE->"CU-UP" ++ : Uplink Data
-    "CU-UP"->UPF --++ : Uplink Data
+    UE->CUUP ++ : Uplink Data
+    CUUP->UPF --++ : Uplink Data
     rnote over "UPF"
     UTEID
     endrnote
     UPF->] -- : Uplink Data
 
-    "New AMF"->SMF: N11: Nsmf_PDUSession_UpdateSMContext Req.
+    NewAMF->SMF: N11: Nsmf_PDUSession_UpdateSMContext Req.
     SMF->UPF: N4: PFCP Session Modification Req.
     rnote over "UPF"
     end
     Buffer Downlink Data
     endrnote
-    UPF->"CU-UP" ++ : Downlink Data
-    rnote over "CU-UP"
+    UPF->CUUP ++ : Downlink Data
+    rnote over CUUP
     DTEID
     endrnote
-    "CU-UP"->UE -- : Downlink Data
+    CUUP->UE -- : Downlink Data
     UPF->SMF: N4: PFCP Session Modification Res.
-    SMF->"New AMF": N11: Nsmf_PDUSession_UpdateSMContext Res.
-    SMF-->"New AMF": N11: Nsmf_PDUSession_SMContextStatusNotify
+    SMF->NewAMF: N11: Nsmf_PDUSession_UpdateSMContext Res.
+    SMF-->NewAMF: N11: Nsmf_PDUSession_SMContextStatusNotify
 end
 
 @enduml
